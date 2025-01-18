@@ -1,0 +1,6 @@
+@OtelCollector_HostAddress =  https://localhost:7275
+
+GET {{OtelCollector_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
