@@ -10,12 +10,12 @@ services:
       REMOTE_WRITE_HOST: mimir:9009
       LOKI_HOST: loki:3100
       TEMPO_HOST: tempo:4317
-      PYROSCOPE_HOST: pyroscope:4040
+      # PYROSCOPE_HOST: pyroscope:4040
     depends_on:
       - mimir
       - loki
       - tempo
-      - pyroscope
+      # - pyroscope
     command:
       - run
       - /etc/alloy/config.alloy
@@ -32,7 +32,6 @@ services:
     volumes:
       - ./tmp/loki:/loki/
       - ./.config/loki-config.yml:/etc/loki/local-config.yaml:ro
-      - ./.config/grafana/dashboards:/var/lib/grafana/dashboards
     command: -config.file=/etc/loki/local-config.yaml
 
   tempo:
@@ -47,7 +46,7 @@ services:
       - ./tmp/tempo:/tmp/tempo
 
   prometheus:
-    image: prom/prometheus:v2.44.0
+    image: prom/prometheus:latest
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -64,15 +63,16 @@ services:
       - ./tmp/prometheus:/prometheus
 
   grafana:
-    image: grafana/grafana:9.5.2
+    image: grafana/grafana:latest
     container_name: grafana
     environment:
       - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - ./tmp/grafana/:/var/lib/grafana/
-      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./.config/ds.yaml:/etc/grafana/provisioning/datasources/ds.yaml
+      - ./.config/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./.config/grafana/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
+      - ./.config/grafana/datasources:/etc/grafana/provisioning/datasources
     ports:
       - "3000:3000"
   
@@ -84,11 +84,11 @@ services:
     ports:
       - "4317:4317" # OTLP gRPC receiver
    
-  pyroscope:
-      image: grafana/pyroscope:latest
-      restart: on-failure
-      ports:
-        - "4040:4040"
+  # pyroscope:
+  #     image: grafana/pyroscope:latest
+  #     restart: on-failure
+  #     ports:
+  #       - "4040:4040"
 
   mimir:
     image: grafana/mimir:latest
@@ -121,3 +121,30 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - ./tmp/minio_data:/data
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: always
+    network_mode: "host" # Use host network to access system metrics
+    ports:
+      - "9100:9100" # Node Exporter listens on this port by default
+    volumes:
+      - ./tmp/proc:/host/proc:ro
+      - ./tmp/sys:/host/sys:ro
+      - ./tmp/:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox-exporter
+    restart: always
+    ports:
+      - "9115:9115" # Blackbox Exporter listens on this port by default
+    volumes:
+      - ./.config/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
+    command:
+      - "--config.file=/etc/blackbox_exporter/config.yml"

@@ -16,6 +16,20 @@ datasources:
     jsonData:
       # The recommended scrape interval is 60s.
       timeInterval: '60s'
+
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    orgId: 1
+    url: http://prometheus:9090
+    basicAuth: false
+    isDefault: false
+    version: 1
+    editable: false
+    jsonData:
+      httpMethod: GET
+
   - name: Loki
     type: loki
     access: proxy
@@ -31,6 +45,7 @@ datasources:
           matcherRegex: tid=(\w+)
           name: TraceID
           url: $${__value.raw}
+
   - name: Tempo
     type: tempo
     access: proxy
@@ -42,12 +57,13 @@ datasources:
     editable: true
     apiVersion: 1
     uid: tempo
-  - name: Pyroscope
-    type: grafana-pyroscope-datasource
-    access: proxy
-    orgId: 1
-    url: http://pyroscope:4040/
-    basicAuth: false
-    isDefault: false
-    version: 1
-    editable: true
+
+  # - name: Pyroscope
+  #   type: grafana-pyroscope-datasource
+  #   access: proxy
+  #   orgId: 1
+  #   url: http://pyroscope:4040/
+  #   basicAuth: false
+  #   isDefault: false
+  #   version: 1
+  #   editable: true
