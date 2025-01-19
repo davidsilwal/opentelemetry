@@ -1,30 +1,18 @@
 version: '3'
 services:
-  alloy:
-    image: grafana/alloy:latest
-    profiles: [ "alloy" ]
-    restart: on-failure
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ "--config=/etc/otel-collector-config.yaml" ]
     volumes:
-      - ./.config/alloy:/etc/alloy
-    environment:
-      REMOTE_WRITE_HOST: mimir:9009
-      LOKI_HOST: loki:3100
-      TEMPO_HOST: tempo:4317
-      # PYROSCOPE_HOST: pyroscope:4040
-    depends_on:
-      - mimir
-      - loki
-      - tempo
-      # - pyroscope
-    command:
-      - run
-      - /etc/alloy/config.alloy
-      - --storage.path=/var/lib/alloy/data
-      - --server.http.listen-addr=0.0.0.0:12345
-      - --stability.level=experimental # Enable all functionality
+      - ./.config/collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "12345:12345"
-    
+      - "4317:4317" # OTLP gRPC receiver
+    depends_on:
+      - tempo
+      - loki
+      - prometheus
+
   loki:
     image: grafana/loki:latest
     ports:
@@ -38,9 +26,6 @@ services:
     image: grafana/tempo:latest
     container_name: tempo
     command: [ "-config.file=/etc/tempo.yaml" ]
-    environment:
-      - MINIO_ACCESS_KEY=TRnYXsLO6bZ5ROWRju99
-      - MINIO_SECRET_KEY=mw4D02OzBKE1qkROYcB3NY9INQGuDyld9v29UUY8
     volumes:
       - ./.config/tempo.yaml:/etc/tempo.yaml
       - ./tmp/tempo:/tmp/tempo
@@ -75,76 +60,6 @@ services:
       - ./.config/grafana/datasources:/etc/grafana/provisioning/datasources
     ports:
       - "3000:3000"
-  
-  otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
-    command: [ "--config=/etc/otel-collector-config.yaml" ]
-    volumes:
-      - ./.config/collector-config.yaml:/etc/otel-collector-config.yaml
-    ports:
-      - "4317:4317" # OTLP gRPC receiver
-   
-  # pyroscope:
-  #     image: grafana/pyroscope:latest
-  #     restart: on-failure
-  #     ports:
-  #       - "4040:4040"
+ 
 
-  mimir:
-    image: grafana/mimir:latest
-    container_name: mimir
-    ports:
-      - "9009:9009" # Mimir's API endpoint
-    environment:
-      - MINIO_ENABLED=true
-      - MINIO_BUCKET_NAME=mimir-bucket
-      - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_ACCESS_KEY=minioadmin 
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_INSECURE=true
-    depends_on:
-      - minio
-#    command:
-#      - -"config.file=/etc/mimir-config/mimir.yaml"
-    volumes:
-      - ./.config/mimir/mimir.yaml:/etc/mimir-config/mimir.yaml
 
-  minio:
-    image: minio/minio:latest
-    container_name: minio
-    ports:
-      - "9000:9000"
-      - "9001:9001" # MinIO console
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
-    volumes:
-      - ./tmp/minio_data:/data
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: node-exporter
-    restart: always
-    network_mode: "host" # Use host network to access system metrics
-    ports:
-      - "9100:9100" # Node Exporter listens on this port by default
-    volumes:
-      - ./tmp/proc:/host/proc:ro
-      - ./tmp/sys:/host/sys:ro
-      - ./tmp/:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-
-  blackbox-exporter:
-    image: prom/blackbox-exporter:latest
-    container_name: blackbox-exporter
-    restart: always
-    ports:
-      - "9115:9115" # Blackbox Exporter listens on this port by default
-    volumes:
-      - ./.config/blackbox.yml:/etc/blackbox_exporter/config.yml:ro
-    command:
-      - "--config.file=/etc/blackbox_exporter/config.yml"
