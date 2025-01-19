@@ -7,8 +7,8 @@ processors:
 extensions:
   health_check: {}
 exporters:
-  otlp:
-    endpoint: tempo:4317
+  otlp/tempo:
+    endpoint: jaeger:4317
     tls:
       insecure: true
   
@@ -22,7 +22,7 @@ service:
   pipelines:
     traces:
       receivers: [otlp]
-      exporters: [otlp]
+      exporters: [otlp/tempo]
     
     metrics:
       receivers: [otlp]
